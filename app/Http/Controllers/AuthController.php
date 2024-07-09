@@ -17,20 +17,18 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6|confirmed',
         ]);
 
         $user = User::create([
-            'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        Auth::login($user);
 
-        return response()->json(['token' => $token, 'email' => $user->email]);
+        return redirect()->route('home')->with('success', 'User registered successfully!');
     }
 
     public function showLoginForm()
@@ -45,21 +43,18 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Credenciales inválidas.'], 401);
+        if (Auth::attempt($request->only('email', 'password'))) {
+            return redirect()->route('home')->with('success', 'User logged in successfully!');
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json(['token' => $token, 'email' => $user->email]);
+        return back()->withErrors(['email' => 'Invalid credentials.']);
     }
 
     public function logout()
     {
         Auth::logout();
-        return redirect('/login');
+
+        return redirect()->route('login')->with('success', 'User logged out successfully!');
     }
 
     public function home()
